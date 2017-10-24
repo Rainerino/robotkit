@@ -3,9 +3,9 @@ sudo: true
 language: python
 
 python:
-  - "2.7"
+  - 2.7
 # command to install dependencies
 install:
-  - pip install python-dev dronekit
+  - pip install dronekit dronekit-sitl
 # command to run tests
 # or py.test for Python versions 3.5 and below
