@@ -6,7 +6,7 @@ python:
   - 2.7
 # command to install dependencies
 install:
-  - pip install -r requirments.txt
+  - pip install -r requirements.txt
 script:
     sh setup.sh
   
