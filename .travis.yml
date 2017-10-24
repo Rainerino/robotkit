@@ -6,8 +6,9 @@ python:
   - 2.7
 # command to install dependencies
 install:
-  - pip install dronekit dronekit-sitl
+  - pip install -r requirments.txt
 script:
+    sh setup.sh
   
 # command to run tests
 # or py.test for Python versions 3.5 and below
