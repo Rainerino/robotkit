@@ -3,20 +3,23 @@ from pymavlink import mavutil
 import time
 import argparse
 import math
+import copy
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--connect', default='127.0.0.1:14550')
+parser.add_argument('--baud', default='921600')
 args = parser.parse_args()
 
 # Connect to the Vehicle
 print 'Connecting to vehicle on: %s' % args.connect
-vehicle = connect(args.connect, baud=921600, wait_ready=True)
+print 'Baud Rate: %s' % args.baud
+vehicle = connect(args.connect, args.baud, wait_ready=True)
 coordinate_list = []
 
 
 def take_off(aTargetAltitude):
 	print "Basic pre-arm checks"
-	while not is_armable:
+	while not vehicle.is_armable:
 		print "Waiting for GPS...:", vehicle.gps_0.fix_type
 		print "Waiting for prechecks"
 		time.sleep(1)
@@ -31,7 +34,6 @@ def take_off(aTargetAltitude):
 		print " Altitude: ", vehicle.location.global_relative_frame.alt
 		print " Waiting for arming..."
 		print "Autopilot Firmware version: %s" % vehicle.version
-		print "Autopilot capabilities (supports ftp): %s" % vehicle.capabilities.ftp
 		print "Global Location: %s" % vehicle.location.global_frame
 		print "Global Location (relative altitude): %s" % vehicle.location.global_relative_frame
 		print "Local Location: %s" % vehicle.location.local_frame    #NED
@@ -76,13 +78,29 @@ def loadWayPoints():
 		coordinate_list.append(LocationGlobalRelative(coordinate[0], coordinate[1], coordinate[2]))
 
 def guidedToWaypoints(point):
-	vehicle.simple_goto(point, groundspeed = 10)
-	print vehicle.location.global_frame.lat
-	print type(vehicle.location.global_frame.lon)
-	#poitionDiff = math.sqrt((vehicle.location.global_frame.lat - point[0]) **2 + (vehicle.location.global_frame.lon - point[1]) ** 2)
-	#print poitionDiff
-	
+	poitionDiff = calculateGlobalDistance(vehicle.location.global_frame.lat, vehicle.location.global_frame.lon, point.lat, point.lon)
+	while poitionDiff >= 10:
+		poitionDiff = calculateGlobalDistance(vehicle.location.global_frame.lat, vehicle.location.global_frame.lon, point.lat, point.lon)
+		vehicle.simple_goto(point, groundspeed = 10)
+		time.sleep(5)
+		print("Distance from Position: %s %s is: %s" %(vehicle.location.global_frame.lat, vehicle.global_frame.lon, poitionDiff))
+	print("Reached Position %s %s" %(point.lat,point.lon))
+
+def calculateGlobalDistance(lat1, lon1, lat2, lon2):
+	R = 6378.137 #earth raiud
+	dLat = lat2 * math.pi / 180 - lat1 * math.pi/180
+	dLon = lon2 * math.pi / 180 - lon1 * math.pi/180
+	a = math.sin(dLat/2) * math.sin(dLat/2) +math.cos(lat1 * math.pi / 180) * math.cos(lat2 * math.pi / 180) * math.sin(dLon/2) * math.sin(dLon/2)
+	c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+	d = R * c;
+	return d * 1000; #meters
+
+
+
 loadWayPoints()
-guidedToWaypoints(coordinate_list[0])
+take_off(30)
+for coordinate in coordinate_list:
+	guidedToWaypoints(coordinate)
+
 print "end of script"
 vehicle.close()
